@@ -14,9 +14,10 @@
 [![pnpm](https://img.shields.io/badge/pnpm-10-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?logo=opensourceinitiative&logoColor=white)](./LICENSE)
 
-<!-- Uncomment once you push to GitHub and replace YOUR_USER / YOUR_REPO -->
-<!-- [![CI](https://github.com/YOUR_USER/YOUR_REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USER/YOUR_REPO/actions) -->
-<!-- [![GitHub stars](https://img.shields.io/github/stars/YOUR_USER/YOUR_REPO?style=social)](https://github.com/YOUR_USER/YOUR_REPO) -->
+[![GitHub last commit](https://img.shields.io/github/last-commit/FernandoZnga/blockchain?logo=github)](https://github.com/FernandoZnga/blockchain/commits/main)
+[![GitHub stars](https://img.shields.io/github/stars/FernandoZnga/blockchain?style=social)](https://github.com/FernandoZnga/blockchain)
+[![GitHub issues](https://img.shields.io/github/issues/FernandoZnga/blockchain)](https://github.com/FernandoZnga/blockchain/issues)
+[![GitHub repo size](https://img.shields.io/github/repo-size/FernandoZnga/blockchain)](https://github.com/FernandoZnga/blockchain)
 
 </div>
 
@@ -93,8 +94,8 @@ educhain-exchange/
 ### 1. Clone & configure
 
 ```bash
-git clone https://github.com/YOUR_USER/YOUR_REPO.git
-cd educhain-exchange
+git clone https://github.com/FernandoZnga/blockchain.git
+cd blockchain
 cp .env.example .env
 ```
 
@@ -216,5 +217,5 @@ Distributed under the **MIT License**. See [`LICENSE`](./LICENSE) for details.
 ---
 
 <div align="center">
-  <sub>Built for learning by <a href="https://github.com/YOUR_USER">Fernando Zuniga</a></sub>
+  <sub>Built for learning by <a href="https://github.com/FernandoZnga">Fernando Zuniga</a></sub>
 </div>
