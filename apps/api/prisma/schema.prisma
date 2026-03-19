@@ -1,0 +1,313 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  COMPLIANCE_ADMIN
+}
+
+enum KycStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  NEEDS_RESUBMISSION
+}
+
+enum PepStatus {
+  CLEAR
+  POSSIBLE_MATCH
+}
+
+enum SanctionsStatus {
+  CLEAR
+  POSSIBLE_MATCH
+  REJECTED
+}
+
+enum CountryRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum DepositMethod {
+  CARD
+  BANK
+}
+
+enum OperationStatus {
+  PENDING
+  PROCESSING
+  APPROVED
+  FAILED
+}
+
+enum TransferType {
+  INTERNAL
+  ONCHAIN
+}
+
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+enum LedgerSourceType {
+  DEPOSIT
+  TRANSFER
+  MINT
+  ADJUSTMENT
+}
+
+enum KycDocumentType {
+  PASSPORT
+  NATIONAL_ID
+  DRIVER_LICENSE
+}
+
+model User {
+  id                 String                @id @default(cuid())
+  firstName          String
+  lastName           String
+  email              String                @unique
+  passwordHash       String
+  emailVerified      Boolean               @default(false)
+  role               UserRole              @default(USER)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  wallet             Wallet?
+  kycProfile         KycProfile?
+  refreshTokens      RefreshToken[]
+  emailTokens        EmailVerificationToken[]
+  complianceChecks   ComplianceCheck[]
+  depositRequests    DepositRequest[]
+  auditLogs          AuditLog[]            @relation("AuditActor")
+  reviewedKycCases   KycProfile[]          @relation("KycReviewer")
+
+  @@index([email])
+}
+
+model Wallet {
+  id                  String         @id @default(cuid())
+  userId              String         @unique
+  address             String         @unique
+  encryptedPrivateKey String
+  publicKey           String?
+  blockchainNetwork   String         @default("hardhat-local")
+  internalBalance     Decimal        @default(0) @db.Decimal(18, 8)
+  tokenBalance        Decimal        @default(0) @db.Decimal(18, 8)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  depositRequests     DepositRequest[]
+  ledgerEntries       LedgerEntry[]
+  sentTransfers       Transfer[]     @relation("TransfersFrom")
+  receivedTransfers   Transfer[]     @relation("TransfersTo")
+  blockchainEvents    BlockchainEvent[]
+
+  @@index([address])
+}
+
+model KycProfile {
+  id                        String             @id @default(cuid())
+  userId                    String             @unique
+  status                    KycStatus          @default(NOT_STARTED)
+  riskScore                 Int                @default(0)
+  pepStatus                 PepStatus          @default(CLEAR)
+  sanctionsScreeningStatus  SanctionsStatus    @default(CLEAR)
+  manualReviewRequired      Boolean            @default(false)
+  submittedAt               DateTime?
+  reviewedAt                DateTime?
+  reviewedByUserId          String?
+  rejectionReason           String?
+  reviewerNotes             String?
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+  user                      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewer                  User?              @relation("KycReviewer", fields: [reviewedByUserId], references: [id])
+  personalInfo              KycPersonalInfo?
+  documents                 KycDocument[]
+  selfie                    KycSelfie?
+  checks                    ComplianceCheck[]
+  auditLogs                 AuditLog[]
+
+  @@index([status])
+}
+
+model KycPersonalInfo {
+  id            String    @id @default(cuid())
+  kycProfileId  String    @unique
+  firstName     String
+  middleName    String?
+  lastName      String
+  dateOfBirth   DateTime
+  country       String
+  nationality   String
+  phoneNumber   String
+  addressLine1  String
+  addressLine2  String?
+  city          String
+  state         String
+  postalCode    String
+  kycProfile    KycProfile @relation(fields: [kycProfileId], references: [id], onDelete: Cascade)
+}
+
+model KycDocument {
+  id                   String          @id @default(cuid())
+  kycProfileId         String
+  documentType         KycDocumentType
+  documentNumberMasked String
+  issuingCountry       String
+  expirationDate       DateTime
+  frontFilePath        String
+  backFilePath         String?
+  status               OperationStatus @default(PENDING)
+  uploadedAt           DateTime        @default(now())
+  kycProfile           KycProfile      @relation(fields: [kycProfileId], references: [id], onDelete: Cascade)
+}
+
+model KycSelfie {
+  id             String     @id @default(cuid())
+  kycProfileId   String     @unique
+  filePath       String
+  faceMatchScore Decimal?   @db.Decimal(5, 2)
+  livenessStatus String?
+  uploadedAt     DateTime   @default(now())
+  kycProfile     KycProfile @relation(fields: [kycProfileId], references: [id], onDelete: Cascade)
+}
+
+model ComplianceCheck {
+  id               String            @id @default(cuid())
+  userId           String
+  kycProfileId     String
+  sanctionsStatus  SanctionsStatus
+  pepStatus        PepStatus
+  countryRiskLevel CountryRiskLevel
+  watchlistHit     Boolean           @default(false)
+  riskScore        Int
+  rawResultJson    Json
+  createdAt        DateTime          @default(now())
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kycProfile       KycProfile        @relation(fields: [kycProfileId], references: [id], onDelete: Cascade)
+}
+
+model DepositRequest {
+  id                      String          @id @default(cuid())
+  userId                  String
+  walletId                String
+  method                  DepositMethod
+  amount                  Decimal         @db.Decimal(18, 8)
+  currency                String          @default("USD")
+  status                  OperationStatus @default(PENDING)
+  externalReferenceSimulated String?
+  rawMaskedDetailsJson    Json
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  processedAt             DateTime?
+  user                    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet                  Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model Transfer {
+  id             String          @id @default(cuid())
+  fromWalletId   String
+  toWalletId     String?
+  toAddress      String
+  amount         Decimal         @db.Decimal(18, 8)
+  currency       String          @default("EDU")
+  status         OperationStatus @default(PENDING)
+  type           TransferType
+  blockchainHash String?
+  blockNumber    Int?
+  createdAt      DateTime        @default(now())
+  confirmedAt    DateTime?
+  fromWallet     Wallet          @relation("TransfersFrom", fields: [fromWalletId], references: [id], onDelete: Cascade)
+  toWallet       Wallet?         @relation("TransfersTo", fields: [toWalletId], references: [id], onDelete: SetNull)
+
+  @@index([fromWalletId, createdAt])
+  @@index([toWalletId, createdAt])
+}
+
+model LedgerEntry {
+  id            String            @id @default(cuid())
+  walletId      String
+  direction     LedgerDirection
+  sourceType    LedgerSourceType
+  sourceId      String
+  amount        Decimal           @db.Decimal(18, 8)
+  balanceBefore Decimal           @db.Decimal(18, 8)
+  balanceAfter  Decimal           @db.Decimal(18, 8)
+  createdAt     DateTime          @default(now())
+  wallet        Wallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, createdAt])
+}
+
+model EmailVerificationToken {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id           String      @id @default(cuid())
+  actorUserId  String?
+  entityType   String
+  entityId     String
+  action       String
+  metadata     Json?
+  createdAt    DateTime    @default(now())
+  actor        User?       @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  kycProfileId String?
+  kycProfile   KycProfile? @relation(fields: [kycProfileId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BlockchainEvent {
+  id            String   @id @default(cuid())
+  walletId      String?
+  eventName     String
+  txHash        String
+  blockNumber   Int?
+  payload       Json
+  createdAt     DateTime @default(now())
+  wallet        Wallet?  @relation(fields: [walletId], references: [id], onDelete: SetNull)
+
+  @@index([walletId, createdAt])
+}

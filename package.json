@@ -1,0 +1,22 @@
+{
+  "name": "educhain-exchange",
+  "private": true,
+  "packageManager": "pnpm@10.6.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @educhain/api --filter @educhain/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "format": "prettier --write .",
+    "db:generate": "pnpm --filter @educhain/api prisma:generate",
+    "db:migrate": "pnpm --filter @educhain/api prisma:migrate",
+    "db:seed": "pnpm --filter @educhain/api prisma:seed",
+    "contracts:deploy": "pnpm --filter @educhain/contracts deploy",
+    "docker:up": "docker compose -f infrastructure/docker-compose.yml up --build",
+    "docker:down": "docker compose -f infrastructure/docker-compose.yml down -v"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "typescript": "^5.7.3"
+  }
+}
