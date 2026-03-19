@@ -16,6 +16,11 @@ export class WalletsController {
     return this.walletsService.getMine(user.sub);
   }
 
+  @Get("me/technical-details")
+  technicalDetailsForCurrentUser(@CurrentUser() user: { sub: string }) {
+    return this.walletsService.getTechnicalDetails(user.sub);
+  }
+
   @Get(":id")
   byId(@Param("id") id: string) {
     return this.walletsService.getById(id);

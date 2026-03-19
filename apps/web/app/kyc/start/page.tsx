@@ -1,5 +1,6 @@
 import { KycFlowForm } from "../../../components/forms";
 import { Shell } from "../../../components/shell";
+import { KycStatusView } from "../../../components/views";
 import { Card, Field, SectionTitle, StatusChip } from "../../../components/ui";
 
 export default function KycStartPage() {
@@ -18,9 +19,17 @@ export default function KycStartPage() {
         </div>
       </Card>
       <div className="mt-6">
+        <KycStatusView />
+      </div>
+      <div className="mt-6">
         <Card className="max-w-5xl">
           <SectionTitle title="Submit KYC details" text="This form chains the simulated KYC API endpoints in sequence." />
           <KycFlowForm />
+        </Card>
+      </div>
+      <div className="mt-6">
+        <Card className="max-w-5xl">
+          <SectionTitle title="Who approves KYC?" text="The user submits the simulated KYC. Admin or compliance users can approve cases from the admin console when manual review is required." />
         </Card>
       </div>
     </Shell>

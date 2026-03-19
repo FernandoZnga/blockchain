@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { BadRequestException } from "@nestjs/common";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 @Injectable()
@@ -16,6 +17,9 @@ export class CryptoService {
 
   decrypt(value: string) {
     const [ivHex, encryptedHex] = value.split(":");
+    if (!ivHex || !encryptedHex) {
+      throw new BadRequestException("Invalid encrypted payload");
+    }
     const decipher = createDecipheriv("aes-256-cbc", this.key, Buffer.from(ivHex, "hex"));
     const decrypted = Buffer.concat([decipher.update(Buffer.from(encryptedHex, "hex")), decipher.final()]);
     return decrypted.toString("utf8");

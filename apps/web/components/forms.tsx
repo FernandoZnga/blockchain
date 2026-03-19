@@ -1,9 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { apiFetch } from "../lib/api";
+import { useAuth } from "../providers/auth-provider";
 
 const registerSchema = z.object({
   firstName: z.string().min(1),
@@ -71,15 +73,17 @@ const kycSchema = z.object({
 
 function FormField({ label, error, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string }) {
   return (
-    <label className="grid gap-2 text-sm text-slate-600">
+    <label className="grid min-w-0 gap-2 text-sm text-slate-600">
       <span>{label}</span>
-      <input {...props} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-slate-400" />
+      <input {...props} className="w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-slate-400" />
       {error ? <span className="text-xs text-rose-600">{error}</span> : null}
     </label>
   );
 }
 
 export function RegisterForm() {
+  const router = useRouter();
+  const { setToken, refreshMe, notify } = useAuth();
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm({
     resolver: zodResolver(registerSchema),
   });
@@ -88,9 +92,16 @@ export function RegisterForm() {
     <form
       className="grid gap-4"
       onSubmit={handleSubmit(async (values) => {
-        await apiFetch("/auth/register", { method: "POST", body: JSON.stringify(values) });
-        reset();
-        alert("Demo registration completed.");
+        try {
+          const response = await apiFetch<{ accessToken: string }>("/auth/register", { method: "POST", body: JSON.stringify(values) });
+          setToken(response.accessToken);
+          await refreshMe();
+          reset();
+          notify("Account created. Redirecting to your dashboard.");
+          router.push("/dashboard");
+        } catch {
+          notify("Unable to create account.", "error");
+        }
       })}
     >
       <div className="grid gap-4 md:grid-cols-2">
@@ -107,6 +118,8 @@ export function RegisterForm() {
 }
 
 export function LoginForm() {
+  const router = useRouter();
+  const { setToken, refreshMe, notify } = useAuth();
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm({
     resolver: zodResolver(loginSchema),
   });
@@ -115,10 +128,16 @@ export function LoginForm() {
     <form
       className="grid gap-4"
       onSubmit={handleSubmit(async (values) => {
-        const response = await apiFetch<{ accessToken: string }>("/auth/login", { method: "POST", body: JSON.stringify(values) });
-        localStorage.setItem("educhain-token", response.accessToken);
-        reset();
-        alert("Logged in. Token stored in localStorage for demo use.");
+        try {
+          const response = await apiFetch<{ accessToken: string }>("/auth/login", { method: "POST", body: JSON.stringify(values) });
+          setToken(response.accessToken);
+          await refreshMe();
+          reset();
+          notify("Signed in successfully.");
+          router.push("/dashboard");
+        } catch {
+          notify("Login failed. Check your credentials.", "error");
+        }
       })}
     >
       <FormField label="Email" type="email" error={errors.email?.message} {...register("email")} />
@@ -131,7 +150,8 @@ export function LoginForm() {
 }
 
 export function CardDepositForm() {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const { notify } = useAuth();
+  const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm({
     resolver: zodResolver(depositSchema),
   });
 
@@ -140,24 +160,29 @@ export function CardDepositForm() {
       className="grid gap-4"
       onSubmit={handleSubmit(async (values) => {
         const token = localStorage.getItem("educhain-token");
-        await apiFetch("/deposits/card", {
-          method: "POST",
-          body: JSON.stringify(values),
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        alert("Demo deposit submitted.");
+        try {
+          await apiFetch("/deposits/card", {
+            method: "POST",
+            body: JSON.stringify(values),
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          reset();
+          notify("Simulated card deposit submitted.");
+        } catch {
+          notify("Unable to submit the deposit request.", "error");
+        }
       })}
     >
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <FormField label="Card holder name" error={errors.cardHolderName?.message} {...register("cardHolderName")} />
         <FormField label="Amount" type="number" step="0.01" error={errors.amount?.message} {...register("amount")} />
       </div>
       <FormField label="Card number" error={errors.cardNumber?.message} {...register("cardNumber")} />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <FormField label="Expiry month" error={errors.expiryMonth?.message} {...register("expiryMonth")} />
         <FormField label="Expiry year" error={errors.expiryYear?.message} {...register("expiryYear")} />
-        <FormField label="CVV" error={errors.cvv?.message} {...register("cvv")} />
       </div>
+      <FormField label="CVV" error={errors.cvv?.message} {...register("cvv")} />
       <FormField label="Billing ZIP" error={errors.billingZip?.message} {...register("billingZip")} />
       <button className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-medium text-white" disabled={isSubmitting}>
         Submit simulated card deposit
@@ -167,6 +192,7 @@ export function CardDepositForm() {
 }
 
 export function SendForm() {
+  const { notify } = useAuth();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(sendSchema),
   });
@@ -176,12 +202,21 @@ export function SendForm() {
       className="grid gap-4"
       onSubmit={handleSubmit(async (values) => {
         const token = localStorage.getItem("educhain-token");
-        await apiFetch("/transfers/internal", {
-          method: "POST",
-          body: JSON.stringify(values),
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        alert("Transfer submitted.");
+        try {
+          const payload = {
+            ...(values.email ? { email: values.email } : {}),
+            ...(values.walletAddress ? { walletAddress: values.walletAddress } : {}),
+            amount: values.amount,
+          };
+          await apiFetch("/transfers/internal", {
+            method: "POST",
+            body: JSON.stringify(payload),
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          notify("Transfer submitted.");
+        } catch {
+          notify("Unable to submit transfer.", "error");
+        }
       })}
     >
       <FormField label="Recipient email" error={errors.email?.message} {...register("email")} />
@@ -195,6 +230,7 @@ export function SendForm() {
 }
 
 export function OnchainSendForm() {
+  const { notify } = useAuth();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(onchainSchema),
   });
@@ -204,12 +240,16 @@ export function OnchainSendForm() {
       className="grid gap-4"
       onSubmit={handleSubmit(async (values) => {
         const token = localStorage.getItem("educhain-token");
-        await apiFetch("/transfers/onchain", {
-          method: "POST",
-          body: JSON.stringify(values),
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        alert("On-chain educational transfer submitted.");
+        try {
+          await apiFetch("/transfers/onchain", {
+            method: "POST",
+            body: JSON.stringify(values),
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          notify("On-chain transfer submitted.");
+        } catch {
+          notify("Unable to submit on-chain transfer.", "error");
+        }
       })}
     >
       <FormField label="Destination address" error={errors.toAddress?.message} {...register("toAddress")} />
@@ -222,7 +262,8 @@ export function OnchainSendForm() {
 }
 
 export function BankDepositForm() {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const { notify } = useAuth();
+  const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm({
     resolver: zodResolver(bankDepositSchema),
   });
 
@@ -231,23 +272,28 @@ export function BankDepositForm() {
       className="grid gap-4"
       onSubmit={handleSubmit(async (values) => {
         const token = localStorage.getItem("educhain-token");
-        await apiFetch("/deposits/bank", {
-          method: "POST",
-          body: JSON.stringify(values),
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        alert("Demo bank deposit submitted.");
+        try {
+          await apiFetch("/deposits/bank", {
+            method: "POST",
+            body: JSON.stringify(values),
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          reset();
+          notify("Simulated bank deposit submitted.");
+        } catch {
+          notify("Unable to submit bank deposit request.", "error");
+        }
       })}
     >
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <FormField label="Account holder name" error={errors.accountHolderName?.message} {...register("accountHolderName")} />
         <FormField label="Bank name" error={errors.bankName?.message} {...register("bankName")} />
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <FormField label="Routing number" error={errors.routingNumber?.message} {...register("routingNumber")} />
         <FormField label="Account number" error={errors.accountNumber?.message} {...register("accountNumber")} />
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <FormField label="Account type" error={errors.accountType?.message} {...register("accountType")} />
         <FormField label="Amount" type="number" step="0.01" error={errors.amount?.message} {...register("amount")} />
       </div>
@@ -259,6 +305,7 @@ export function BankDepositForm() {
 }
 
 export function KycFlowForm() {
+  const { notify } = useAuth();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(kycSchema),
   });
@@ -269,44 +316,48 @@ export function KycFlowForm() {
       onSubmit={handleSubmit(async (values) => {
         const token = localStorage.getItem("educhain-token");
         const auth = { Authorization: `Bearer ${token}` };
-        await apiFetch("/kyc/start", { method: "POST", headers: auth });
-        await apiFetch("/kyc/personal-info", {
-          method: "PATCH",
-          headers: auth,
-          body: JSON.stringify({
-            firstName: values.firstName,
-            middleName: values.middleName,
-            lastName: values.lastName,
-            dateOfBirth: values.dateOfBirth,
-            country: values.country,
-            nationality: values.nationality,
-            phoneNumber: values.phoneNumber,
-            addressLine1: values.addressLine1,
-            addressLine2: values.addressLine2,
-            city: values.city,
-            state: values.state,
-            postalCode: values.postalCode,
-          }),
-        });
-        await apiFetch("/kyc/document", {
-          method: "POST",
-          headers: auth,
-          body: JSON.stringify({
-            documentType: values.documentType,
-            documentNumber: values.documentNumber,
-            issuingCountry: values.issuingCountry,
-            expirationDate: values.expirationDate,
-            frontImageUrl: values.frontImageUrl,
-            backImageUrl: values.backImageUrl || undefined,
-          }),
-        });
-        await apiFetch("/kyc/selfie", {
-          method: "POST",
-          headers: auth,
-          body: JSON.stringify({ selfieImageUrl: values.selfieImageUrl }),
-        });
-        await apiFetch("/kyc/submit", { method: "POST", headers: auth });
-        alert("KYC submitted to the simulation engine.");
+        try {
+          await apiFetch("/kyc/start", { method: "POST", headers: auth });
+          await apiFetch("/kyc/personal-info", {
+            method: "PATCH",
+            headers: auth,
+            body: JSON.stringify({
+              firstName: values.firstName,
+              middleName: values.middleName,
+              lastName: values.lastName,
+              dateOfBirth: values.dateOfBirth,
+              country: values.country,
+              nationality: values.nationality,
+              phoneNumber: values.phoneNumber,
+              addressLine1: values.addressLine1,
+              addressLine2: values.addressLine2,
+              city: values.city,
+              state: values.state,
+              postalCode: values.postalCode,
+            }),
+          });
+          await apiFetch("/kyc/document", {
+            method: "POST",
+            headers: auth,
+            body: JSON.stringify({
+              documentType: values.documentType,
+              documentNumber: values.documentNumber,
+              issuingCountry: values.issuingCountry,
+              expirationDate: values.expirationDate,
+              frontImageUrl: values.frontImageUrl,
+              backImageUrl: values.backImageUrl || undefined,
+            }),
+          });
+          await apiFetch("/kyc/selfie", {
+            method: "POST",
+            headers: auth,
+            body: JSON.stringify({ selfieImageUrl: values.selfieImageUrl }),
+          });
+          await apiFetch("/kyc/submit", { method: "POST", headers: auth });
+          notify("KYC submitted for review.");
+        } catch {
+          notify("Unable to submit KYC.", "error");
+        }
       })}
     >
       <div className="grid gap-4 md:grid-cols-3">

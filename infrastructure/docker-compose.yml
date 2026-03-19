@@ -21,6 +21,7 @@ services:
     command: sh -c "corepack enable && pnpm install && pnpm --filter @educhain/contracts exec hardhat node --hostname 0.0.0.0"
     volumes:
       - ..:/workspace
+      - blockchain_node_modules:/workspace/node_modules
     ports:
       - "8545:8545"
     healthcheck:
@@ -32,13 +33,14 @@ services:
   api:
     image: node:22-alpine
     working_dir: /workspace
-    command: sh -c "corepack enable && pnpm install && pnpm db:generate && pnpm --filter @educhain/api dev"
+    command: sh -c "corepack enable && pnpm install && pnpm db:generate && pnpm db:push && pnpm --filter @educhain/api dev"
     env_file:
       - ../.env
     ports:
       - "4000:4000"
     volumes:
       - ..:/workspace
+      - api_node_modules:/workspace/node_modules
       - api_uploads:/workspace/apps/api/uploads
     depends_on:
       db:
@@ -56,6 +58,7 @@ services:
       - "3000:3000"
     volumes:
       - ..:/workspace
+      - web_node_modules:/workspace/node_modules
     depends_on:
       api:
         condition: service_started
@@ -71,3 +74,6 @@ services:
 volumes:
   postgres_data:
   api_uploads:
+  blockchain_node_modules:
+  api_node_modules:
+  web_node_modules:

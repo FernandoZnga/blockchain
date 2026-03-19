@@ -18,6 +18,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   return response.json();
 }
 
+export function getStoredToken() {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("educhain-token");
+}
+
 export function formatCurrency(value: number | string) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -28,4 +33,9 @@ export function formatCurrency(value: number | string) {
 
 export function shortAddress(value: string) {
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+export function shortMiddle(value: string, start = 10, end = 8) {
+  if (value.length <= start + end + 3) return value;
+  return `${value.slice(0, start)}...${value.slice(-end)}`;
 }

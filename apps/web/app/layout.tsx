@@ -1,6 +1,8 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { QueryProvider } from "../providers/query-provider";
+import { AuthProvider } from "../providers/auth-provider";
+import { Toaster } from "../components/toaster";
 
 export const metadata: Metadata = {
   title: "EduChain Exchange",
@@ -11,7 +13,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <AuthProvider>
+            {children}
+            <Toaster />
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

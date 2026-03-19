@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { randomUUID, createHash } from "node:crypto";
 import { PrismaService } from "../shared/prisma.service";
 import { AuditService } from "../shared/audit.service";
@@ -18,15 +18,36 @@ export class AuthService {
     private readonly audit: AuditService,
   ) {}
 
+  private parseJwtTtl(value: string | undefined, fallbackSeconds: number) {
+    if (!value) return fallbackSeconds;
+    if (/^\d+$/.test(value)) return Number(value);
+
+    const match = value.match(/^(\d+)([smhd])$/);
+    if (!match) return fallbackSeconds;
+
+    const amount = Number(match[1]);
+    const unit = match[2];
+    const multipliers: Record<string, number> = {
+      s: 1,
+      m: 60,
+      h: 60 * 60,
+      d: 60 * 60 * 24,
+    };
+    const multiplier = unit ? multipliers[unit] : undefined;
+    if (!multiplier) return fallbackSeconds;
+
+    return amount * multiplier;
+  }
+
   private async signTokens(user: { id: string; email: string; role: string }) {
     const payload = { sub: user.id, email: user.email, role: user.role };
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: process.env.JWT_ACCESS_SECRET,
-      expiresIn: process.env.JWT_ACCESS_TTL ?? "15m",
+      expiresIn: this.parseJwtTtl(process.env.JWT_ACCESS_TTL, 15 * 60),
     });
     const refreshToken = await this.jwtService.signAsync(payload, {
       secret: process.env.JWT_REFRESH_SECRET,
-      expiresIn: process.env.JWT_REFRESH_TTL ?? "7d",
+      expiresIn: this.parseJwtTtl(process.env.JWT_REFRESH_TTL, 7 * 24 * 60 * 60),
     });
     return { accessToken, refreshToken };
   }

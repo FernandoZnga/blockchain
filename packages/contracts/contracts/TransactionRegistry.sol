@@ -8,13 +8,13 @@ contract TransactionRegistry is Ownable {
         address indexed from,
         address indexed to,
         uint256 amount,
-        string reference,
+        string transferRef,
         uint256 timestamp
     );
 
     constructor(address initialOwner) Ownable(initialOwner) {}
 
-    function registerTransfer(address from, address to, uint256 amount, string calldata reference) external onlyOwner {
-        emit EducationalTransaction(from, to, amount, reference, block.timestamp);
+    function registerTransfer(address from, address to, uint256 amount, string calldata transferRef) external onlyOwner {
+        emit EducationalTransaction(from, to, amount, transferRef, block.timestamp);
     }
 }

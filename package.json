@@ -10,6 +10,7 @@
     "format": "prettier --write .",
     "db:generate": "pnpm --filter @educhain/api prisma:generate",
     "db:migrate": "pnpm --filter @educhain/api prisma:migrate",
+    "db:push": "pnpm --filter @educhain/api prisma:push",
     "db:seed": "pnpm --filter @educhain/api prisma:seed",
     "contracts:deploy": "pnpm --filter @educhain/contracts deploy",
     "docker:up": "docker compose -f infrastructure/docker-compose.yml up --build",

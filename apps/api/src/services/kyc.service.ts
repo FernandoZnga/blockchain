@@ -81,6 +81,9 @@ export class KycService {
     }
 
     const latestDocument = profile.documents[profile.documents.length - 1];
+    if (!latestDocument) {
+      throw new BadRequestException("KYC document is required");
+    }
     const simulation = this.compliance.run({
       firstName: profile.personalInfo.firstName,
       lastName: profile.personalInfo.lastName,
@@ -167,10 +170,15 @@ export class KycService {
   async reviewCase(caseId: string, reviewerId: string, action: "APPROVED" | "REJECTED" | "NEEDS_RESUBMISSION", notes?: string, reason?: string) {
     const current = await this.prisma.kycProfile.findUnique({ where: { id: caseId } });
     if (!current) throw new NotFoundException("KYC case not found");
+    const nextStatusByAction: Record<"APPROVED" | "REJECTED" | "NEEDS_RESUBMISSION", KycStatus> = {
+      APPROVED: KycStatus.APPROVED,
+      REJECTED: KycStatus.REJECTED,
+      NEEDS_RESUBMISSION: KycStatus.NEEDS_RESUBMISSION,
+    };
     const updated = await this.prisma.kycProfile.update({
       where: { id: caseId },
       data: {
-        status: KycStatus[action],
+        status: nextStatusByAction[action],
         reviewedAt: new Date(),
         reviewedByUserId: reviewerId,
         reviewerNotes: notes,

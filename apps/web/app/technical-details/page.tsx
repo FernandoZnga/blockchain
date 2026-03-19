@@ -1,7 +1,7 @@
 import { Shell } from "../../components/shell";
 import { Card, SectionTitle } from "../../components/ui";
 
-const topics = [
+const topics: [string, string][] = [
   ["Blockchain", "A blockchain is a shared append-only ledger. In this demo it runs locally on Hardhat."],
   ["Wallet", "A wallet groups keys and addresses used to authorize transfers."],
   ["Public address", "The public address is safe to share and is used to receive demo funds."],

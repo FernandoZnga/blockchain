@@ -1,5 +1,5 @@
 import { PrismaClient, UserRole, KycStatus, OperationStatus, DepositMethod, TransferType, LedgerDirection, LedgerSourceType, PepStatus, SanctionsStatus } from "@prisma/client";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
 
 const prisma = new PrismaClient();

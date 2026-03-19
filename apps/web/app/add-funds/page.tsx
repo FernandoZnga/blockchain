@@ -1,11 +1,12 @@
 import { BankDepositForm, CardDepositForm } from "../../components/forms";
 import { Shell } from "../../components/shell";
+import { AddFundsView } from "../../components/views";
 import { Card, SectionTitle } from "../../components/ui";
 
 export default function AddFundsPage() {
   return (
     <Shell title="Add Funds" eyebrow="Deposits">
-      <div className="grid gap-5 lg:grid-cols-2">
+      <AddFundsView>
         <Card>
           <SectionTitle title="Simulated card deposit" text="Cards and bank accounts are validated locally only. No external processor is involved." />
           <CardDepositForm />
@@ -22,7 +23,7 @@ export default function AddFundsPage() {
             <p>Approved requests credit the internal ledger and can be reflected as demo tokens on the local chain.</p>
           </div>
         </Card>
-      </div>
+      </AddFundsView>
     </Shell>
   );
 }
